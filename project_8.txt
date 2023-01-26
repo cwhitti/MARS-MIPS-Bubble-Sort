@@ -1,0 +1,198 @@
+.data
+numArr:		.word	0:10
+counter:	.float 	0
+numPrompt:	.asciiz	"Enter size of array (1-10): "
+errorMessage:	.asciiz	"ERROR: invalid array size. Enter size of array (1-10): "
+arrayPromt:	.asciiz	"Add number to array: "
+space:		.asciiz " "
+spaces:		.asciiz	"      "
+newLine:	.asciiz "\n"
+
+.text
+
+.globl main
+
+main:
+#load array into s0
+la 	$s0, numArr
+
+#Prompt for nums to sort
+la 	$a0, numPrompt
+li	$v0, 4
+syscall
+
+#Get number of nums
+li 	$v0, 5
+syscall
+
+#Return the count in register S1.
+move	$s1,$v0
+
+#check if between ranges
+bgt	$s1,1,checkGood
+ble	$s1,10,checkGood
+
+checkGood: #Double check if between ranges
+
+  bgt	$s1,10,redoInput
+  blt	$s1,1, redoInput
+
+#printNewLine
+la 	$a0, newLine
+li	$v0, 4
+syscall
+
+#load counter
+lw	$t0,counter
+
+#Get the nums, put into array
+jal 	ReadNums
+
+#printNewLine
+la 	$a0, newLine
+li	$v0, 4
+syscall
+
+#Sort numbers
+jal	BSort
+
+#format spaces
+la 	$a0, spaces
+li	$v0, 4
+syscall
+
+#print numbers
+j	PrintNums
+
+#printNewLine
+la 	$a0, newLine
+li	$v0, 4
+syscall
+
+
+redoInput: #Get new input
+#Prompt for nums to sort
+la 	$a0, errorMessage
+li	$v0, 4
+syscall
+
+#Get number of nums
+li 	$v0, 5
+syscall
+
+#Return the count in register S1.
+move	$s1,$v0
+
+j	checkGood
+
+ReadNums:
+
+#Prompt for the num
+la 	$a0, arrayPromt
+li	$v0, 4
+syscall
+
+#Get number to put in array
+li 	$v0, 5
+syscall
+
+move 	$t5,$v0
+#read number into address, increase by 4 each time
+sw 	$t5,numArr($t1)
+
+#increase t1 by 4
+add 	$t1,$t1,4
+
+#increase counter by 1
+add	$t0,$t0,1
+
+#jump back to readnums if counter is less than count
+blt	$t0,$s1,ReadNums
+
+#reload counters for BSort
+li	$t0, 0
+li	$t1, 0
+li	$t7, 0
+
+jr	$ra
+BSort:
+
+#Get the first number (0($s0)), put into t2
+lw	$t2,0($s0)
+
+#get the second number(add 1 to s0, 0($s0), put into t3
+lw	$t3,4($s0)
+
+#if the second number (t3) is smaller than the first number (t2), swap them
+blt	$t3,$t2,Swap
+
+AfterSwap:
+#increment s0 by 4
+addi	$s0,$s0,4
+
+#increment counter by 1
+addi	$t0,$t0,1
+
+#Make sure we loop one fewer time than s1
+subi	$t6,$s1,1
+
+#loop to BSort if t0 is less than s1
+blt	$t0,$t6,BSort
+
+#Increment outer-loop by 1
+addi 	$t4,$t4,1
+
+#reset counter and header for next outer-loop iteration
+li	$t0, 0
+la 	$s0, numArr
+
+#outer loop
+blt 	$t4,$t6,BSort
+
+#Reset registers so we can print
+li	$t0, 0
+la 	$s0, numArr
+jr	$ra
+
+Swap:
+#Store t2 into t4
+sw	$t3,0($s0)
+
+#Reassign t3 into the address of t4
+sw	$t2,4($s0)
+
+j	AfterSwap
+
+PrintNums:
+
+#Loop s1 number of times
+bge	$t0,$s1, end
+
+#Print the integer
+li 	$v0, 1
+lw 	$a0, 0($s0)
+syscall
+
+#Prompt for nums to sort
+la 	$a0, space
+li	$v0, 4
+syscall
+
+#advance counter and pointer
+addi 	$t0, $t0, 1
+addi 	$s0, $s0, 4
+
+#re-loop
+j PrintNums
+
+
+end: # Exit the program
+
+#printNewLine
+la 	$a0, newLine
+li	$v0, 4
+syscall
+
+#call for end
+li 	$v0, 10
+syscall
